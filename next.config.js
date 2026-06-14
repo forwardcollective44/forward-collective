@@ -7,7 +7,7 @@ const nextConfig = {
     remotePatterns: [
       // Allow product photography from any https source during development.
       // Tighten this to your CDN / Shopify domain before production.
-      { protocol: "https", hostname: "**" },
+      { protocol: "https", hostname: "cdn.shopify.com" },
     ],
   },
 };
