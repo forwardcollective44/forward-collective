@@ -1,0 +1,13 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      // Allow product photography from any https source during development.
+      // Tighten this to your CDN / Shopify domain before production.
+      { protocol: "https", hostname: "**" },
+    ],
+  },
+};
+
+module.exports = nextConfig;
