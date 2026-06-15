@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 /**
- * Email + phone capture. On submit it posts to /api/join, which creates the
- * Supabase user, credits +50, and triggers the Klaviyo welcome flow.
- * `variant="footer"` renders the compact inline version used in page footers.
+ * Email capture that joins / signs in to The Collective.
+ * Submitting sends a Supabase magic link to the email. Clicking that link
+ * lands on /auth/callback, which creates the member (+50 welcome points on
+ * first sign-in) and opens The Collective.
+ *
+ * Phone is captured for the brand's SMS list but auth is email-only for now
+ * (SMS OTP needs an SMS provider configured in Supabase).
  */
 export default function JoinForm({
   variant = "block",
@@ -23,29 +28,30 @@ export default function JoinForm({
     e.preventDefault();
     setState("loading");
     try {
-      const res = await fetch("/api/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, phone }),
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
-      const data = await res.json();
-      if (res.ok) {
-        setState("done");
-        setMessage(data.message ?? "You're in the Collective.");
-      } else {
+      if (error) {
         setState("error");
-        setMessage(data.message ?? "Something went wrong.");
+        setMessage(error.message);
+      } else {
+        setState("done");
+        setMessage("Check your email — tap the link to enter the Collective.");
       }
     } catch {
       setState("error");
-      setMessage("Network error.");
+      setMessage("Something went wrong. Try again.");
     }
   }
 
   if (state === "done") {
     return (
       <p className="fc-label text-gold" role="status">
-        {message || "You're in. 50 points just dropped."}
+        {message}
       </p>
     );
   }
@@ -56,7 +62,11 @@ export default function JoinForm({
   return (
     <form
       onSubmit={submit}
-      className={variant === "footer" ? "flex w-full max-w-md flex-col gap-2 sm:flex-row" : "flex w-full max-w-md flex-col gap-2"}
+      className={
+        variant === "footer"
+          ? "flex w-full max-w-md flex-col gap-2 sm:flex-row"
+          : "flex w-full max-w-md flex-col gap-2"
+      }
     >
       <input
         type="email"
@@ -80,7 +90,7 @@ export default function JoinForm({
         disabled={state === "loading"}
         className="fc-color fc-label whitespace-nowrap border border-gold bg-gold px-6 py-3 text-bg hover:bg-gold-light disabled:opacity-50"
       >
-        {state === "loading" ? "Joining…" : cta}
+        {state === "loading" ? "Sending…" : cta}
       </button>
       {state === "error" && (
         <p className="fc-label text-error sm:basis-full">{message}</p>

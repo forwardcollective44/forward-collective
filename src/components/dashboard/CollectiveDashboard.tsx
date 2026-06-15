@@ -60,6 +60,11 @@ export default function CollectiveDashboard({
               {away.toLocaleString()} pts to {next.description}
             </p>
           )}
+          <form action="/auth/signout" method="post" className="pt-3">
+            <button type="submit" className="fc-color fc-label text-muted hover:text-text">
+              Sign out
+            </button>
+          </form>
         </div>
       </header>
 

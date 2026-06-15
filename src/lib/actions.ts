@@ -88,6 +88,41 @@ export async function joinCollective(input: {
 }
 
 /**
+ * Ensure the signed-in auth user has a Collective member record.
+ * Runs on first sign-in (from /auth/callback): creates the row, credits +50
+ * welcome points, fires the Klaviyo welcome flow. Idempotent.
+ */
+export async function ensureMember(userId: string, email: string | null): Promise<void> {
+  const admin = createServiceClient();
+  const { data: existing } = await admin
+    .from("users")
+    .select("id, collective_member")
+    .eq("id", userId)
+    .maybeSingle();
+  if (existing?.collective_member) return;
+
+  const now = new Date().toISOString();
+  await admin.from("users").upsert({
+    id: userId,
+    email,
+    collective_member: true,
+    member_since: now,
+    points_total: WELCOME_POINTS,
+    referral_code: generateReferralCode(),
+  });
+
+  const wb = welcomeBonus();
+  await admin.from("point_events").insert({
+    user_id: userId,
+    type: wb.type,
+    description: wb.description,
+    points: wb.points,
+  });
+
+  await klaviyo.welcome({ email }, WELCOME_POINTS);
+}
+
+/**
  * Credit points for a fulfilled order. Call from your Shopify/Stripe
  * fulfillment webhook. Handles base, multiplier, quantity, recurring and
  * streak bonuses, plus referral and early-access side effects.
