@@ -144,6 +144,224 @@ export async function getCollectionProducts(
 }
 
 // ---------------------------------------------------------------------------
+// The Staples page — pulled live from a Shopify collection, one tile PER
+// COLORWAY, grouped by product type. Add/remove products in the "Staple"
+// collection in Shopify (and set a Product type) and this updates itself; no
+// code change needed. A product with White + Black shows as two tiles.
+// ---------------------------------------------------------------------------
+
+export interface StapleTypeGroup {
+  type: string; // e.g. "Tees", "Hoodies", "Sweatpants"
+  items: Product[]; // one Product per colorway (category holds the color name)
+}
+
+// Order the type bands appear in. Anything not listed falls to the end,
+// alphabetically — so new product types you add still show up automatically.
+const TYPE_ORDER = ["Tees", "Hoodies", "Sweatpants"];
+
+const STAPLES_QUERY = `
+  query Staples($handle: String!) {
+    collection(handle: $handle) {
+      products(first: 60, sortKey: CREATED, reverse: true) {
+        nodes {
+          id
+          title
+          handle
+          productType
+          options { name values }
+          featuredImage { url }
+          priceRange { minVariantPrice { amount } }
+          variants(first: 100) {
+            nodes {
+              availableForSale
+              price { amount }
+              image { url }
+              selectedOptions { name value }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+interface StaplesData {
+  collection: {
+    products: {
+      nodes: {
+        id: string;
+        title: string;
+        handle: string;
+        productType: string | null;
+        options: { name: string; values: string[] }[];
+        featuredImage: { url: string } | null;
+        priceRange: { minVariantPrice: { amount: string } };
+        variants: {
+          nodes: {
+            availableForSale: boolean;
+            price: { amount: string };
+            image: { url: string } | null;
+            selectedOptions: { name: string; value: string }[];
+          }[];
+        };
+      }[];
+    };
+  } | null;
+}
+
+export async function getStaplesGrouped(
+  handle = "staple"
+): Promise<StapleTypeGroup[] | null> {
+  const data = await storefront<StaplesData>(STAPLES_QUERY, { handle });
+  if (!data?.collection) return null;
+
+  const groups = new Map<string, Product[]>();
+
+  for (const p of data.collection.products.nodes) {
+    const colorOption = p.options.find((o) => o.name.toLowerCase() === "color");
+    const colors = colorOption?.values?.length ? colorOption.values : [""];
+
+    for (const color of colors) {
+      const colorVariants = color
+        ? p.variants.nodes.filter((v) =>
+            v.selectedOptions.some(
+              (o) => o.name.toLowerCase() === "color" && o.value === color
+            )
+          )
+        : p.variants.nodes;
+
+      const withImage = colorVariants.find((v) => v.image?.url);
+      const image =
+        withImage?.image?.url ?? p.featuredImage?.url ?? null;
+
+      const prices = colorVariants.map((v) => Number(v.price.amount));
+      const price = prices.length
+        ? Math.min(...prices)
+        : Number(p.priceRange.minVariantPrice.amount);
+
+      const tile: Product = {
+        id: `${p.id}:${color || "default"}`,
+        name: p.title,
+        category: color, // colorway shown on the card
+        price,
+        image_url: image,
+        tag: "staple",
+        active: true,
+        handle: p.handle,
+      };
+
+      const type = p.productType || "Other";
+      const arr = groups.get(type) ?? [];
+      arr.push(tile);
+      groups.set(type, arr);
+    }
+  }
+
+  // Order the bands: known types first (in TYPE_ORDER), then the rest A→Z.
+  const ordered = Array.from(groups.keys()).sort((a, b) => {
+    const ia = TYPE_ORDER.indexOf(a);
+    const ib = TYPE_ORDER.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  return ordered.map((type) => ({ type, items: groups.get(type)! }));
+}
+
+// ---------------------------------------------------------------------------
+// Forward Archives — sections driven entirely by Shopify collections.
+// Any collection with the "Archive order" metafield (forward.archive_order)
+// set appears as a section, low number first. The collection's title is the
+// section name, its description (rich text — supports images / social proof)
+// is the story, and its products are the clothing. Add a collection, set the
+// number, fill it in — no code change.
+// ---------------------------------------------------------------------------
+
+export interface ArchiveSection {
+  id: string;
+  title: string;
+  handle: string;
+  descriptionHtml: string;
+  image: string | null;
+  products: Product[];
+}
+
+const ARCHIVE_SECTIONS_QUERY = `
+  query ArchiveSections {
+    collections(first: 50) {
+      nodes {
+        id
+        title
+        handle
+        descriptionHtml
+        image { url }
+        order: metafield(namespace: "forward", key: "archive_order") { value }
+        products(first: 24, sortKey: CREATED, reverse: true) {
+          nodes {
+            id
+            title
+            handle
+            productType
+            featuredImage { url }
+            priceRange { minVariantPrice { amount } }
+          }
+        }
+      }
+    }
+  }
+`;
+
+interface ArchiveSectionsData {
+  collections: {
+    nodes: {
+      id: string;
+      title: string;
+      handle: string;
+      descriptionHtml: string | null;
+      image: { url: string } | null;
+      order: { value: string } | null;
+      products: {
+        nodes: {
+          id: string;
+          title: string;
+          handle: string;
+          productType: string | null;
+          featuredImage: { url: string } | null;
+          priceRange: { minVariantPrice: { amount: string } };
+        }[];
+      };
+    }[];
+  };
+}
+
+export async function getArchiveSections(): Promise<ArchiveSection[]> {
+  const data = await storefront<ArchiveSectionsData>(ARCHIVE_SECTIONS_QUERY);
+  if (!data) return [];
+  return data.collections.nodes
+    .filter((c) => c.order?.value != null && c.order.value !== "")
+    .sort((a, b) => Number(a.order!.value) - Number(b.order!.value))
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      handle: c.handle,
+      descriptionHtml: c.descriptionHtml || "",
+      image: c.image?.url ?? null,
+      products: c.products.nodes.map((n) => ({
+        id: n.id,
+        name: n.title,
+        category: n.productType || "",
+        price: Number(n.priceRange.minVariantPrice.amount),
+        image_url: n.featuredImage?.url ?? null,
+        tag: "archive",
+        active: true,
+        handle: n.handle,
+      })),
+    }));
+}
+
+// ---------------------------------------------------------------------------
 // Single product (PDP)
 // ---------------------------------------------------------------------------
 

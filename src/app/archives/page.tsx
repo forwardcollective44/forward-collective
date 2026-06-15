@@ -3,124 +3,114 @@ import JoinForm from "@/components/JoinForm";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
 import { getCurrentMember } from "@/lib/session";
-import { createClient } from "@/lib/supabase/server";
-import { getCollectionProducts } from "@/lib/shopify";
-import { SAMPLE_DROPS } from "@/lib/sample";
-import type { Drop } from "@/lib/types";
+import { getArchiveSections } from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
 
-// The Shopify collection that holds past drops / archive pieces.
-const ARCHIVE_COLLECTION_HANDLE = "the-archives";
-
-async function getDrops(): Promise<Drop[]> {
-  try {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("drops")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (data && data.length) return data as Drop[];
-  } catch {
-    /* fall through */
-  }
-  return SAMPLE_DROPS;
-}
-
 export default async function ArchivesPage() {
   const member = await getCurrentMember();
+  const sections = await getArchiveSections();
 
-  // ---------- Non-member state (locked) ----------
+  // ---------- Non-member: built to convert ----------
   if (!member) {
     return (
-      <main className="flex min-h-[calc(100vh-57px)] items-center justify-center px-5 py-16">
-        <div className="w-full max-w-xl space-y-6 text-center">
-          <h1 className="fc-display text-[clamp(40px,9vw,72px)] text-text">Forward Archives</h1>
-          <div className="fc-body space-y-4 text-text">
-            <p>
-              The Forward Archives is home to every Forward Collective drop that came before. Past
-              seasons, sold-out pieces, and the full history of where this brand has been.
-              Access is exclusive to members of The Collective.
-            </p>
-            <p>
-              The Collective is our loyalty program and community — free to join, no catches.
-              Sign up with your phone or email and you&apos;re in. You&apos;ll earn points on
-              every purchase, get rewarded for coming back, and unlock early drop access when you
-              hit 6,000 points. Once you&apos;re a member, the Forward Archives opens.
-            </p>
-            <p>Join The Collective below.</p>
-          </div>
-          <div className="flex flex-col items-center gap-3">
-            <JoinForm />
-            <p className="fc-label text-muted">
-              Already a member?{" "}
-              <Link href="/collective" className="fc-color text-gold hover:text-gold-light">
-                Sign in.
-              </Link>
-            </p>
-          </div>
+      <main className="mx-auto max-w-2xl px-5 py-16 md:px-8">
+        <div className="space-y-6 text-center">
+          <p className="fc-label text-muted">Members only</p>
+          <h1 className="fc-display text-[clamp(40px,9vw,72px)] text-text">
+            The Forward Archives
+          </h1>
+          <p className="fc-body text-text">
+            Every Forward Collective drop that came before, plus first access to
+            what&apos;s next. Past seasons, sold-out pieces, and the drops still
+            to come. The Archives open the moment you join The Collective &mdash;
+            free, instant, forever.
+          </p>
         </div>
+
+        {/* Locked teaser: what's inside */}
+        {sections.length > 0 && (
+          <div className="mt-10">
+            <p className="fc-label text-muted">Inside the Archives</p>
+            <div className="mt-3 grid gap-px bg-border sm:grid-cols-2">
+              {sections.map((s) => (
+                <div key={s.id} className="flex items-center justify-between bg-surface px-4 py-4">
+                  <span className="fc-label text-text">{s.title}</span>
+                  <span className="fc-label text-muted">Locked</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* The conversion point */}
+        <div className="mt-12 flex flex-col items-center gap-4 border-t border-border pt-12">
+          <p className="fc-label text-text">Join with your number to unlock</p>
+          <JoinForm cta="Unlock the Archives" />
+          <p className="fc-label text-muted">
+            Already a member?{" "}
+            <Link href="/collective" className="fc-color text-gold hover:text-gold-light">
+              Sign in.
+            </Link>
+          </p>
+        </div>
+        <Footer />
       </main>
     );
   }
 
-  // ---------- Member state (active account) ----------
-  const [drops, archivePieces] = await Promise.all([
-    getDrops(),
-    getCollectionProducts(ARCHIVE_COLLECTION_HANDLE, 24),
-  ]);
-  const pieces = archivePieces ?? [];
-
+  // ---------- Member: the sections, straight from Shopify ----------
+  const name = member.name?.split(" ")[0] || "Member";
   return (
     <main>
       <section className="px-5 py-10 md:px-8">
         <header className="max-w-2xl">
-          <p className="fc-label text-muted">Forward Archives — Collective Members Only</p>
+          <p className="fc-label text-muted">Forward Archives &mdash; Collective Members Only</p>
           <h1 className="fc-display mt-2 text-[clamp(32px,7vw,56px)] text-text">
-            The Forward Archives
+            Welcome back, {name}.
           </h1>
           <p className="fc-body mt-3 text-text">
-            You&apos;re in. Look back through every drop that came before — the pieces, the
-            seasons, the full history. When we release something new to the Forward Archives,
-            you&apos;ll be the first to know: we&apos;ll text and email you the moment it lands.
+            Look back through every drop that came before, and see what&apos;s
+            coming next. When we release something new here, you&apos;ll be the
+            first to know &mdash; we&apos;ll text and email you the moment it lands.
           </p>
         </header>
 
-        {/* Past collection content — real pieces from the archive */}
-        {pieces.length > 0 ? (
-          <div className="mt-10">
-            <p className="fc-label text-muted">The Pieces</p>
-            <div className="mt-4 grid grid-cols-2 gap-px bg-border md:grid-cols-3">
-              {pieces.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-          </div>
-        ) : (
+        {sections.length === 0 ? (
           <div className="mt-10 bg-surface p-8">
             <p className="fc-body text-text">
-              The archive pieces are being catalogued. Check back soon — and watch your texts,
-              we&apos;ll let you know the moment new history goes up here.
+              The archive is being catalogued. Check back soon &mdash; and watch
+              your texts, we&apos;ll let you know the moment new history goes up.
             </p>
           </div>
-        )}
+        ) : (
+          <div className="mt-12 space-y-16">
+            {sections.map((s) => (
+              <section key={s.id}>
+                <h2 className="fc-display text-[clamp(24px,5vw,40px)] text-text">
+                  {s.title}
+                </h2>
 
-        {/* The drops / collections themselves */}
-        <div className="mt-14">
-          <p className="fc-label text-muted">The Drops</p>
-          <div className="fc-grid mt-4 grid-cols-1 min-[480px]:grid-cols-2">
-            {drops.map((drop, i) => (
-              <article key={drop.id} className="space-y-3 bg-surface p-6">
-                <p className="fc-label text-muted">
-                  Drop {String(drops.length - i).padStart(2, "0")}
-                </p>
-                <h2 className="fc-display text-[clamp(24px,4vw,40px)] text-text">{drop.name}</h2>
-                <p className="fc-label text-muted">{drop.season}</p>
-                <p className="fc-label text-gold">Archived</p>
-              </article>
+                {/* Story + social proof — edited in Shopify (collection description) */}
+                {s.descriptionHtml && (
+                  <div
+                    className="fc-body mt-4 max-w-2xl text-text [&_a]:text-gold [&_img]:my-5 [&_img]:w-full [&_p]:mt-3"
+                    dangerouslySetInnerHTML={{ __html: s.descriptionHtml }}
+                  />
+                )}
+
+                {/* The clothing — products in the collection */}
+                {s.products.length > 0 && (
+                  <div className="mt-6 grid grid-cols-2 gap-px bg-border md:grid-cols-3">
+                    {s.products.map((p) => (
+                      <ProductCard key={p.id} product={p} />
+                    ))}
+                  </div>
+                )}
+              </section>
             ))}
           </div>
-        </div>
+        )}
       </section>
       <Footer />
     </main>
