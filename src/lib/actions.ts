@@ -4,6 +4,7 @@
 // These run only on the server and use the service-role client for writes that
 // must bypass RLS (crediting points, redemptions, membership creation).
 
+import { cookies } from "next/headers";
 import { createServiceClient, createClient } from "./supabase/server";
 import {
   calcOrderPoints,
@@ -101,10 +102,12 @@ export async function ensureMember(userId: string, email: string | null): Promis
     .maybeSingle();
   if (existing?.collective_member) return;
 
+  const phone = cookies().get("fc_phone")?.value ?? null;
   const now = new Date().toISOString();
   await admin.from("users").upsert({
     id: userId,
     email,
+    phone,
     collective_member: true,
     member_since: now,
     points_total: WELCOME_POINTS,
@@ -119,7 +122,9 @@ export async function ensureMember(userId: string, email: string | null): Promis
     points: wb.points,
   });
 
-  await klaviyo.welcome({ email }, WELCOME_POINTS);
+  // Add to Klaviyo lists (email + SMS) and fire the welcome flow.
+  await klaviyo.subscribeMember({ email, phone });
+  await klaviyo.welcome({ email, phone }, WELCOME_POINTS);
 }
 
 /**

@@ -40,7 +40,7 @@ export default function ReferralBlock({
         />
         <button
           onClick={copy}
-          className="fc-color fc-label whitespace-nowrap border border-gold bg-gold px-6 py-3 text-bg hover:bg-gold-light"
+          className="fc-color fc-label whitespace-nowrap border border-gold bg-gold px-6 py-3 text-ink hover:bg-gold-light"
         >
           {copied ? "Copied" : "Copy"}
         </button>

@@ -50,6 +50,70 @@ async function track(metric: string, profile: { email?: string | null; phone?: s
   }).catch((e) => console.error("[klaviyo] track failed", e));
 }
 
+// ---------------------------------------------------------------------------
+// List subscription — this is what actually adds a member to your Klaviyo
+// lists (and triggers the welcome flow, which fires on "Added to List").
+// SMS List is double opt-in, so new numbers get a confirmation text.
+// ---------------------------------------------------------------------------
+
+const LIST_EMAIL = "TnYc45"; // "Email List"
+const LIST_SMS = "RvV4cc"; // "SMS List"
+
+function formatPhone(raw?: string | null): string | null {
+  if (!raw) return null;
+  const d = raw.replace(/[^\d]/g, "");
+  if (d.length === 10) return `+1${d}`;
+  if (d.length === 11 && d.startsWith("1")) return `+${d}`;
+  if (raw.trim().startsWith("+")) return raw.trim();
+  return null;
+}
+
+async function subscribeToList(listId: string, profileAttributes: Record<string, unknown>) {
+  const apiKey = key();
+  if (!apiKey) {
+    console.warn("[klaviyo] no API key — skipping list subscribe");
+    return;
+  }
+  await fetch(`${KLAVIYO_API}/profile-subscription-bulk-create-jobs/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Klaviyo-API-Key ${apiKey}`,
+      "Content-Type": "application/json",
+      accept: "application/json",
+      revision: REVISION,
+    },
+    body: JSON.stringify({
+      data: {
+        type: "profile-subscription-bulk-create-job",
+        attributes: {
+          profiles: {
+            data: [{ type: "profile", attributes: profileAttributes }],
+          },
+        },
+        relationships: { list: { data: { type: "list", id: listId } } },
+      },
+    }),
+  }).catch((e) => console.error("[klaviyo] subscribe failed", e));
+}
+
+// Subscribe a new member: email → Email List, phone → SMS List, each with
+// marketing consent (joining the form is the consent).
+export async function subscribeMember(p: { email?: string | null; phone?: string | null }) {
+  if (p.email) {
+    await subscribeToList(LIST_EMAIL, {
+      email: p.email,
+      subscriptions: { email: { marketing: { consent: "SUBSCRIBED" } } },
+    });
+  }
+  const phone = formatPhone(p.phone);
+  if (phone) {
+    await subscribeToList(LIST_SMS, {
+      phone_number: phone,
+      subscriptions: { sms: { marketing: { consent: "SUBSCRIBED" } } },
+    });
+  }
+}
+
 // Flow 1 — Welcome (email + SMS): "You're in the Collective."
 export const welcome = (p: { email?: string | null; phone?: string | null }, pointsBalance: number) =>
   track("Joined The Collective", p, { points_balance: pointsBalance, archives_unlocked: true });

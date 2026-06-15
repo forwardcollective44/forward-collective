@@ -36,7 +36,7 @@ export default function RewardsStrip({
               {state === "redeemable" && (
                 <button
                   onClick={() => onRedeem?.(reward)}
-                  className="fc-color fc-label border border-gold bg-gold px-4 py-2 text-bg hover:bg-gold-light"
+                  className="fc-color fc-label border border-gold bg-gold px-4 py-2 text-ink hover:bg-gold-light"
                 >
                   Redeem
                 </button>

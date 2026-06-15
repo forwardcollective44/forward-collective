@@ -64,7 +64,7 @@ export default async function CartPage() {
 
             <a
               href={cart!.checkoutUrl}
-              className="fc-color fc-label mt-8 block w-full border border-gold bg-gold px-6 py-4 text-center text-bg hover:bg-gold-light"
+              className="fc-color fc-label mt-8 block w-full border border-gold bg-gold px-6 py-4 text-center text-ink hover:bg-gold-light"
             >
               Checkout
             </a>

@@ -18,7 +18,7 @@ export default function ProductCard({ product }: { product: Product }) {
             className="fc-transform object-cover group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="fc-transform flex h-full w-full items-center justify-center bg-[#101010] group-hover:scale-[1.04]">
+          <div className="fc-transform flex h-full w-full items-center justify-center bg-[#ECEAE5] group-hover:scale-[1.04]">
             <span className="fc-label text-muted">FC</span>
           </div>
         )}

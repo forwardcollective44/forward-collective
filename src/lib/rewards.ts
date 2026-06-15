@@ -70,3 +70,44 @@ export function rewardState(
   if (reward.points - pointsTotal <= 300) return "near";
   return "locked";
 }
+
+// ---------------------------------------------------------------------------
+// Tiers — based on LIFETIME points earned (the sum of every points-earned
+// event, which never decreases). Spending your balance resets the progress
+// bar but never your standing. Platinum is permanent once reached.
+// ---------------------------------------------------------------------------
+
+export type Tier = "Bronze" | "Silver" | "Gold" | "Platinum";
+
+export const TIERS: { tier: Tier; min: number }[] = [
+  { tier: "Bronze", min: 0 },
+  { tier: "Silver", min: 1750 },
+  { tier: "Gold", min: 4000 },
+  { tier: "Platinum", min: 6000 },
+];
+
+export function tierFromLifetime(lifetimeEarned: number): Tier {
+  if (lifetimeEarned >= 6000) return "Platinum";
+  if (lifetimeEarned >= 4000) return "Gold";
+  if (lifetimeEarned >= 1750) return "Silver";
+  return "Bronze";
+}
+
+export function tierColor(tier: Tier): string {
+  switch (tier) {
+    case "Platinum":
+      return "#2C2C34";
+    case "Gold":
+      return "#A6822E";
+    case "Silver":
+      return "#8A8F98";
+    default:
+      return "#B5793A"; // Bronze
+  }
+}
+
+// The next tier and points-to-go, or null at Platinum.
+export function nextTier(lifetimeEarned: number): { tier: Tier; toGo: number } | null {
+  const next = TIERS.find((t) => t.min > lifetimeEarned);
+  return next ? { tier: next.tier, toGo: next.min - lifetimeEarned } : null;
+}

@@ -30,10 +30,10 @@ export default async function ArchivesPage() {
     return (
       <main className="flex min-h-[calc(100vh-57px)] items-center justify-center px-5 py-16">
         <div className="w-full max-w-xl space-y-6 text-center">
-          <h1 className="fc-display text-[clamp(40px,9vw,72px)] text-text">The Archives</h1>
+          <h1 className="fc-display text-[clamp(40px,9vw,72px)] text-text">Kadima Archives</h1>
           <div className="fc-body space-y-4 text-text">
             <p>
-              The Archives is home to every Forward Collective drop that came before. Past
+              Kadima Archives is home to every Forward Collective drop that came before. Past
               seasons, sold-out pieces, and the full history of where this brand has been.
               Access is exclusive to members of The Collective.
             </p>
@@ -41,7 +41,7 @@ export default async function ArchivesPage() {
               The Collective is our loyalty program and community — free to join, no catches.
               Sign up with your email or phone number and you&apos;re in. You&apos;ll earn
               points on every purchase, get rewarded for coming back, and unlock early drop
-              access when you hit 6,000 points. Once you&apos;re a member, The Archives opens.
+              access when you hit 6,000 points. Once you&apos;re a member, Kadima Archives opens.
             </p>
             <p>Join The Collective below.</p>
           </div>
@@ -64,7 +64,7 @@ export default async function ArchivesPage() {
   return (
     <main>
       <section className="px-5 py-10 md:px-8">
-        <p className="fc-label text-muted">The Archives — Collective Members Only</p>
+        <p className="fc-label text-muted">Kadima Archives — Collective Members Only</p>
         <div className="fc-grid mt-8 grid-cols-1 min-[480px]:grid-cols-2">
           {drops.map((drop, i) => (
             <article key={drop.id} className="space-y-3 bg-surface p-6">

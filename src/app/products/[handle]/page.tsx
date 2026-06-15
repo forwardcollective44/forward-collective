@@ -29,7 +29,7 @@ export default async function ProductPage({
               priority
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[#101010]">
+            <div className="flex h-full w-full items-center justify-center bg-[#ECEAE5]">
               <span className="fc-label text-muted">FC</span>
             </div>
           )}
@@ -66,7 +66,7 @@ export default async function ProductPage({
 
             <button
               type="submit"
-              className="fc-color fc-label w-full border border-gold bg-gold px-6 py-4 text-bg hover:bg-gold-light"
+              className="fc-color fc-label w-full border border-gold bg-gold px-6 py-4 text-ink hover:bg-gold-light"
             >
               Add to Bag
             </button>

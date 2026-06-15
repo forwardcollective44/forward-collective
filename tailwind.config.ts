@@ -13,13 +13,16 @@ const config: Config = {
     },
     extend: {
       colors: {
-        bg: "#080808",
-        surface: "#0D0D0D",
-        border: "#1E1E1E",
-        text: "#EFEFEF",
-        muted: "#555555",
-        gold: "#C9A84C",
-        "gold-light": "#E8D5A3",
+        // Light palette. Flat, flush, grid-to-grid.
+        bg: "#FFFFFF",
+        surface: "#F3F2EF",
+        border: "#E3E1DC",
+        text: "#141414",
+        muted: "#8C8A85",
+        gold: "#A6822E",
+        "gold-light": "#C9A84C",
+        // Dark ink used for text on gold/accent fills.
+        ink: "#141414",
         error: "#8B3A3A",
       },
       fontFamily: {

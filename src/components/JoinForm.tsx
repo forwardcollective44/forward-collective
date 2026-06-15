@@ -4,13 +4,11 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * Email capture that joins / signs in to The Collective.
- * Submitting sends a Supabase magic link to the email. Clicking that link
- * lands on /auth/callback, which creates the member (+50 welcome points on
- * first sign-in) and opens The Collective.
- *
- * Phone is captured for the brand's SMS list but auth is email-only for now
- * (SMS OTP needs an SMS provider configured in Supabase).
+ * SMS-forward join / sign-in.
+ * Phone leads (it's your SMS list — pushed to Klaviyo for texting drops and
+ * rewards). Email carries the secure passwordless sign-in link. On submit we
+ * stash the phone in a short-lived cookie so the member record can save it,
+ * then send the magic link.
  */
 export default function JoinForm({
   variant = "block",
@@ -19,8 +17,8 @@ export default function JoinForm({
   variant?: "block" | "footer";
   cta?: string;
 }) {
-  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -28,19 +26,22 @@ export default function JoinForm({
     e.preventDefault();
     setState("loading");
     try {
+      if (phone.trim()) {
+        document.cookie = `fc_phone=${encodeURIComponent(
+          phone.trim()
+        )}; path=/; max-age=1800; samesite=lax`;
+      }
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
       if (error) {
         setState("error");
         setMessage(error.message);
       } else {
         setState("done");
-        setMessage("Check your email — tap the link to enter the Collective.");
+        setMessage("Check your email for your sign-in link. Texts to follow.");
       }
     } catch {
       setState("error");
@@ -69,6 +70,15 @@ export default function JoinForm({
       }
     >
       <input
+        type="tel"
+        required
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        placeholder="PHONE"
+        aria-label="Phone"
+        className={inputCls}
+      />
+      <input
         type="email"
         required
         value={email}
@@ -77,21 +87,18 @@ export default function JoinForm({
         aria-label="Email"
         className={inputCls}
       />
-      <input
-        type="tel"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        placeholder="PHONE (OPTIONAL)"
-        aria-label="Phone"
-        className={inputCls}
-      />
       <button
         type="submit"
         disabled={state === "loading"}
-        className="fc-color fc-label whitespace-nowrap border border-gold bg-gold px-6 py-3 text-bg hover:bg-gold-light disabled:opacity-50"
+        className="fc-color fc-label whitespace-nowrap border border-gold bg-gold px-6 py-3 text-ink hover:bg-gold-light disabled:opacity-50"
       >
         {state === "loading" ? "Sending…" : cta}
       </button>
+      {variant !== "footer" && (
+        <p className="fc-label text-muted">
+          Texts for drops &amp; rewards. Email is just your secure sign-in.
+        </p>
+      )}
       {state === "error" && (
         <p className="fc-label text-error sm:basis-full">{message}</p>
       )}
