@@ -71,4 +71,5 @@ export interface Product {
   image_url: string | null;
   tag: "staple" | "archive";
   active: boolean;
+  handle?: string;
 }

@@ -41,6 +41,14 @@ export default function Nav() {
               </Link>
             );
           })}
+          <Link
+            href="/cart"
+            className={`fc-color fc-label ${
+              pathname === "/cart" ? "text-text" : "text-muted"
+            } hover:text-text`}
+          >
+            Bag
+          </Link>
         </div>
       </div>
     </nav>
