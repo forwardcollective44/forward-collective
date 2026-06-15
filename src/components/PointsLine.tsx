@@ -4,24 +4,25 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * The points system, drawn as a horizontal progress line instead of a bullet
- * list. Each node is a reward milestone; the gold fill animates to the member's
- * current balance on load — so it always picks up where they left off (the
- * value comes from the database). For non-members it animates across the whole
- * ladder once, to explain how the system works.
+ * list. Each node is a reward milestone with a clear reward + points label.
+ * The gold fill animates to the member's current balance on load — so it always
+ * picks up where they left off (the value comes from the database). As the fill
+ * moves, only the milestones it has passed (the ones you've unlocked) light up;
+ * everything ahead of you stays in the regular muted state.
  */
 
-type Node = { points: number; label: string; sub: string };
+type Node = { points: number; reward: string; label: string };
 
 const NODES: Node[] = [
-  { points: 0, label: "Join", sub: "+50" },
-  { points: 150, label: "$5", sub: "off" },
-  { points: 300, label: "$12", sub: "off" },
-  { points: 600, label: "$25", sub: "off" },
-  { points: 1000, label: "$40", sub: "off" },
-  { points: 1750, label: "$75", sub: "off" },
-  { points: 2500, label: "$100", sub: "off" },
-  { points: 4000, label: "Free", sub: "item" },
-  { points: 6000, label: "Early", sub: "access" },
+  { points: 0, reward: "Join", label: "+50 pts" },
+  { points: 150, reward: "$5 off", label: "150 pts" },
+  { points: 300, reward: "$12 off", label: "300 pts" },
+  { points: 600, reward: "$25 off", label: "600 pts" },
+  { points: 1000, reward: "$40 off", label: "1,000 pts" },
+  { points: 1750, reward: "$75 off", label: "1,750 pts" },
+  { points: 2500, reward: "$100 off", label: "2,500 pts" },
+  { points: 4000, reward: "Free item", label: "4,000 pts" },
+  { points: 6000, reward: "Early access", label: "6,000 pts" },
 ];
 
 // Map a points balance to a 0–100% position along the evenly-spaced ladder.
@@ -58,7 +59,7 @@ export default function PointsLine({
 
   return (
     <div className="w-full overflow-x-auto pb-2">
-      <div className="relative min-w-[640px] pt-7">
+      <div className="relative min-w-[860px] pt-7">
         {/* Current balance marker (member view) */}
         {!demo && (
           <div
@@ -69,16 +70,16 @@ export default function PointsLine({
           </div>
         )}
 
-        {/* Track */}
-        <div className="relative h-px w-full bg-border">
+        {/* Track — thicker than before for presence */}
+        <div className="relative h-[3px] w-full rounded-full bg-border">
           <div
-            className="absolute left-0 top-0 h-px bg-gold"
+            className="absolute left-0 top-0 h-[3px] rounded-full bg-gold"
             style={{ width: `${pct}%`, transitionProperty: "width", transitionDuration: "1100ms", transitionTimingFunction: "cubic-bezier(0.22,1,0.36,1)" }}
           />
           {/* Nodes */}
           {NODES.map((n, i) => {
             const left = (i / (NODES.length - 1)) * 100;
-            const reached = pct + 0.5 >= left;
+            const reached = pct + 0.4 >= left;
             return (
               <div
                 key={n.points}
@@ -86,11 +87,15 @@ export default function PointsLine({
                 style={{ left: `${left}%` }}
               >
                 <span
-                  className="fc-color block h-2 w-2 rounded-full"
+                  className="fc-color block rounded-full border"
                   style={{
-                    backgroundColor: reached ? "var(--gold)" : "var(--border)",
-                    transitionProperty: "background-color",
-                    transitionDuration: "900ms",
+                    height: reached ? "14px" : "11px",
+                    width: reached ? "14px" : "11px",
+                    backgroundColor: reached ? "var(--gold)" : "var(--bg)",
+                    borderColor: reached ? "var(--gold)" : "var(--border)",
+                    borderWidth: reached ? "0px" : "2px",
+                    transitionProperty: "background-color, border-color, height, width",
+                    transitionDuration: "700ms",
                   }}
                 />
               </div>
@@ -98,19 +103,33 @@ export default function PointsLine({
           })}
         </div>
 
-        {/* Labels */}
-        <div className="relative mt-3 h-8">
+        {/* Labels — reward on top, points below; only unlocked ones emphasized */}
+        <div className="relative mt-4 h-10">
           {NODES.map((n, i) => {
             const left = (i / (NODES.length - 1)) * 100;
+            const reached = pct + 0.4 >= left;
             return (
               <div
                 key={n.points}
-                className="absolute -translate-x-1/2 text-center"
-                style={{ left: `${left}%` }}
+                className="fc-color absolute -translate-x-1/2 text-center"
+                style={{
+                  left: `${left}%`,
+                  width: "84px",
+                  transitionProperty: "color, opacity",
+                  transitionDuration: "700ms",
+                }}
               >
-                <div className="fc-label text-text">{n.label}</div>
-                <div className="fc-label text-muted" style={{ letterSpacing: "0.1em" }}>
-                  {n.points === 0 ? n.sub : `${n.points >= 1000 ? n.points / 1000 + "k" : n.points}`}
+                <div
+                  className="text-[12px] font-semibold leading-tight"
+                  style={{ color: reached ? "var(--text)" : "var(--muted)" }}
+                >
+                  {n.reward}
+                </div>
+                <div
+                  className="mt-1 text-[11px] leading-tight"
+                  style={{ color: reached ? "var(--gold)" : "var(--muted)", opacity: reached ? 1 : 0.8 }}
+                >
+                  {n.label}
                 </div>
               </div>
             );

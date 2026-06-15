@@ -92,6 +92,58 @@ export async function getStorefrontProducts(first = 24): Promise<Product[] | nul
 }
 
 // ---------------------------------------------------------------------------
+// Products in a collection (e.g. the Archives gallery)
+// ---------------------------------------------------------------------------
+
+const COLLECTION_PRODUCTS_QUERY = `
+  query CollectionProducts($handle: String!, $first: Int!) {
+    collection(handle: $handle) {
+      products(first: $first, sortKey: CREATED, reverse: true) {
+        nodes {
+          id
+          title
+          handle
+          productType
+          featuredImage { url altText }
+          priceRange { minVariantPrice { amount } }
+        }
+      }
+    }
+  }
+`;
+
+export async function getCollectionProducts(
+  handle: string,
+  first = 24
+): Promise<Product[] | null> {
+  const data = await storefront<{
+    collection: {
+      products: {
+        nodes: {
+          id: string;
+          title: string;
+          handle: string;
+          productType: string | null;
+          featuredImage: { url: string; altText: string | null } | null;
+          priceRange: { minVariantPrice: { amount: string } };
+        }[];
+      };
+    } | null;
+  }>(COLLECTION_PRODUCTS_QUERY, { handle, first });
+  if (!data?.collection) return null;
+  return data.collection.products.nodes.map((n) => ({
+    id: n.id,
+    name: n.title,
+    category: n.productType || "",
+    price: Number(n.priceRange.minVariantPrice.amount),
+    image_url: n.featuredImage?.url ?? null,
+    tag: "archive",
+    active: true,
+    handle: n.handle,
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Single product (PDP)
 // ---------------------------------------------------------------------------
 

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const PERKS = [
   { t: "Points on everything", d: "1 point for every $1. They never expire." },
   { t: "Cash rewards", d: "Redeem from 150 points. The ladder never ends." },
-  { t: "Early access", d: "At 6,000 points, the Kadima Archives and every drop open early." },
+  { t: "Early access", d: "At 6,000 points, the Forward Archives and every drop open early." },
 ];
 
 export default async function CollectivePage({
