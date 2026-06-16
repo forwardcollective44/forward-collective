@@ -23,6 +23,13 @@ export function createClient() {
           }
         },
       },
+      // Persist auth cookies for a year so members stay signed in across
+      // browser restarts, not just page reloads.
+      cookieOptions: {
+        maxAge: 60 * 60 * 24 * 365,
+        sameSite: "lax",
+        path: "/",
+      },
     }
   );
 }
