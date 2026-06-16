@@ -16,6 +16,59 @@ import {
 } from "./points";
 import { nextMilestone, REWARDS } from "./rewards";
 import * as klaviyo from "./klaviyo";
+import {
+  getExclusiveDropMeta,
+  getExclusivePassword,
+  getExclusiveReveal,
+  type ExclusiveReveal,
+} from "./shopify";
+
+/**
+ * Unlock the exclusive drop. Runs server-side: the real code and the products
+ * never reach the browser until the entered code matches AND the drop is live.
+ * On success it sets a 30-day cookie scoped to the drop handle so the member
+ * stays unlocked, and returns the reveal (name + products) for the cutscene.
+ */
+export async function unlockExclusiveDrop(password: string): Promise<{
+  ok: boolean;
+  status: "coming_soon" | "live";
+  message: string;
+  reveal?: ExclusiveReveal;
+}> {
+  const meta = await getExclusiveDropMeta();
+  if (!meta) {
+    return {
+      ok: false,
+      status: "coming_soon",
+      message: "No drop is scheduled right now. Check back soon.",
+    };
+  }
+  if (meta.status !== "live") {
+    return {
+      ok: false,
+      status: "coming_soon",
+      message: "Not yet — this drop unlocks soon. Keep your code close.",
+    };
+  }
+  const real = await getExclusivePassword();
+  if (!real || password.trim() !== real.trim()) {
+    return {
+      ok: false,
+      status: "live",
+      message: "That code isn't right. Check the text from Forward.",
+    };
+  }
+
+  cookies().set("fc_drop_unlocked", meta.handle, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+
+  const reveal = await getExclusiveReveal();
+  return { ok: true, status: "live", message: "Unlocked.", reveal: reveal ?? undefined };
+}
 
 function generateReferralCode(): string {
   return "FC-" + Math.random().toString(36).slice(2, 8).toUpperCase();

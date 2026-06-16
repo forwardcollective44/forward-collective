@@ -298,6 +298,7 @@ const ARCHIVE_SECTIONS_QUERY = `
         descriptionHtml
         image { url }
         order: metafield(namespace: "forward", key: "archive_order") { value }
+        exclusive: metafield(namespace: "forward", key: "exclusive") { value }
         products(first: 24, sortKey: CREATED, reverse: true) {
           nodes {
             id
@@ -322,6 +323,7 @@ interface ArchiveSectionsData {
       descriptionHtml: string | null;
       image: { url: string } | null;
       order: { value: string } | null;
+      exclusive: { value: string } | null;
       products: {
         nodes: {
           id: string;
@@ -340,7 +342,10 @@ export async function getArchiveSections(): Promise<ArchiveSection[]> {
   const data = await storefront<ArchiveSectionsData>(ARCHIVE_SECTIONS_QUERY);
   if (!data) return [];
   return data.collections.nodes
+    // Has an archive order, and is NOT the current exclusive drop (that one
+    // lives in its own gated section, not the past-collections list).
     .filter((c) => c.order?.value != null && c.order.value !== "")
+    .filter((c) => c.exclusive?.value !== "true")
     .sort((a, b) => Number(a.order!.value) - Number(b.order!.value))
     .map((c) => ({
       id: c.id,
@@ -359,6 +364,120 @@ export async function getArchiveSections(): Promise<ArchiveSection[]> {
         handle: n.handle,
       })),
     }));
+}
+
+// ---------------------------------------------------------------------------
+// Exclusive drop — the one current members-only release. Controlled entirely
+// in Shopify, no code, via metafields on a single collection:
+//
+//   forward.exclusive          "true"   — marks THIS collection as the drop
+//   forward.exclusive_status   "coming_soon" | "live"
+//   forward.exclusive_password the shared unlock code (read server-side only)
+//   forward.exclusive_teaser   optional line shown while it's coming soon
+//
+// The collection TITLE is the drop name (the cutscene headline) and its
+// products are the clothing revealed after unlock. The drop name and the
+// products are never sent to the browser until the member unlocks — the gate
+// only ever knows the status and teaser. When the drop is over, remove the
+// "exclusive" flag and give the collection an "archive_order" to fold it into
+// the past-collections list. One drop flagged at a time.
+// ---------------------------------------------------------------------------
+
+export interface ExclusiveDropMeta {
+  handle: string; // server-side only; used to scope the unlock cookie
+  status: "coming_soon" | "live";
+  teaser: string;
+}
+
+export interface ExclusiveReveal {
+  name: string;
+  products: Product[];
+}
+
+interface ExclusiveNode {
+  title: string;
+  handle: string;
+  flag: { value: string } | null;
+  status: { value: string } | null;
+  teaser: { value: string } | null;
+  password: { value: string } | null;
+  products: {
+    nodes: {
+      id: string;
+      title: string;
+      handle: string;
+      productType: string | null;
+      featuredImage: { url: string } | null;
+      priceRange: { minVariantPrice: { amount: string } };
+    }[];
+  };
+}
+
+async function fetchExclusiveNode(): Promise<ExclusiveNode | null> {
+  const data = await storefront<{ collections: { nodes: ExclusiveNode[] } }>(
+    `query ExclusiveDrop {
+       collections(first: 50) {
+         nodes {
+           title
+           handle
+           flag: metafield(namespace: "forward", key: "exclusive") { value }
+           status: metafield(namespace: "forward", key: "exclusive_status") { value }
+           teaser: metafield(namespace: "forward", key: "exclusive_teaser") { value }
+           password: metafield(namespace: "forward", key: "exclusive_password") { value }
+           products(first: 48, sortKey: CREATED, reverse: true) {
+             nodes {
+               id
+               title
+               handle
+               productType
+               featuredImage { url }
+               priceRange { minVariantPrice { amount } }
+             }
+           }
+         }
+       }
+     }`,
+    {},
+    { noStore: true }
+  );
+  if (!data) return null;
+  return data.collections.nodes.find((n) => n.flag?.value === "true") ?? null;
+}
+
+/** Safe for the gate: status + teaser only. No drop name, no products. */
+export async function getExclusiveDropMeta(): Promise<ExclusiveDropMeta | null> {
+  const c = await fetchExclusiveNode();
+  if (!c) return null;
+  return {
+    handle: c.handle,
+    status: c.status?.value === "live" ? "live" : "coming_soon",
+    teaser: c.teaser?.value || "",
+  };
+}
+
+/** The reveal: drop name + products. Call ONLY after a verified unlock. */
+export async function getExclusiveReveal(): Promise<ExclusiveReveal | null> {
+  const c = await fetchExclusiveNode();
+  if (!c) return null;
+  return {
+    name: c.title,
+    products: c.products.nodes.map((n) => ({
+      id: n.id,
+      name: n.title,
+      category: n.productType || "",
+      price: Number(n.priceRange.minVariantPrice.amount),
+      image_url: n.featuredImage?.url ?? null,
+      tag: "exclusive",
+      active: true,
+      handle: n.handle,
+    })),
+  };
+}
+
+/** Server-only password read. Never expose the result to the client. */
+export async function getExclusivePassword(): Promise<string | null> {
+  const c = await fetchExclusiveNode();
+  return c?.password?.value ?? null;
 }
 
 // ---------------------------------------------------------------------------

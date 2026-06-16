@@ -69,7 +69,7 @@ export interface Product {
   category: string;
   price: number;
   image_url: string | null;
-  tag: "staple" | "archive";
+  tag: "staple" | "archive" | "exclusive";
   active: boolean;
   handle?: string;
 }
