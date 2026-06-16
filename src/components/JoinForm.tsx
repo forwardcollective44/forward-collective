@@ -13,9 +13,12 @@ import { createClient } from "@/lib/supabase/client";
 export default function JoinForm({
   variant = "block",
   cta = "Join the Collective",
+  mode = "join",
 }: {
   variant?: "block" | "footer";
   cta?: string;
+  /** "signin" = existing member, email only (no phone capture). */
+  mode?: "join" | "signin";
 }) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -52,10 +55,14 @@ export default function JoinForm({
   if (state === "done") {
     return (
       <p className="fc-label text-gold" role="status">
-        {message}
+        {mode === "signin"
+          ? "Check your email for your sign-in link."
+          : message}
       </p>
     );
   }
+
+  const signin = mode === "signin";
 
   const inputCls =
     "w-full border border-border bg-surface px-4 py-3 fc-body text-text placeholder:text-muted focus:border-muted focus:outline-none";
@@ -69,15 +76,17 @@ export default function JoinForm({
           : "flex w-full max-w-md flex-col gap-2"
       }
     >
-      <input
-        type="tel"
-        required
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        placeholder="PHONE"
-        aria-label="Phone"
-        className={inputCls}
-      />
+      {!signin && (
+        <input
+          type="tel"
+          required
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="PHONE"
+          aria-label="Phone"
+          className={inputCls}
+        />
+      )}
       <input
         type="email"
         required
@@ -96,7 +105,9 @@ export default function JoinForm({
       </button>
       {variant !== "footer" && (
         <p className="fc-label text-muted">
-          Texts for drops &amp; rewards. Email is just your secure sign-in.
+          {signin
+            ? "We'll email you a secure sign-in link. No password needed."
+            : "Texts for drops & rewards. Email is just your secure sign-in."}
         </p>
       )}
       {state === "error" && (
