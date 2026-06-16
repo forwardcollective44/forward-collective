@@ -1,3 +1,4 @@
+import Link from "next/link";
 import JoinForm from "@/components/JoinForm";
 import Footer from "@/components/Footer";
 import PointsLine from "@/components/PointsLine";
@@ -74,9 +75,18 @@ export default async function CollectivePage({
         {/* Join */}
         <div className="mt-14">
           <JoinForm />
+          <p className="fc-label mt-4 text-muted">
+            Already a member?{" "}
+            <Link
+              href="/signin"
+              className="fc-color text-gold hover:text-gold-light"
+            >
+              Sign in.
+            </Link>
+          </p>
         </div>
       </section>
-      <Footer />
+      <Footer showJoin={false} />
     </main>
   );
 }
