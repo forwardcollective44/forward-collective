@@ -1,9 +1,16 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import JoinForm from "@/components/JoinForm";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
+import ExclusiveDrop from "@/components/ExclusiveDrop";
 import { getCurrentMember } from "@/lib/session";
-import { getArchiveSections } from "@/lib/shopify";
+import {
+  getArchiveSections,
+  getExclusiveDropMeta,
+  getExclusiveReveal,
+  type ExclusiveReveal,
+} from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
 
@@ -49,18 +56,29 @@ export default async function ArchivesPage() {
           <JoinForm cta="Unlock the Archives" />
           <p className="fc-label text-muted">
             Already a member?{" "}
-            <Link href="/collective" className="fc-color text-gold hover:text-gold-light">
+            <Link href="/signin" className="fc-color text-gold hover:text-gold-light">
               Sign in.
             </Link>
           </p>
         </div>
-        <Footer />
+        <Footer showJoin={false} />
       </main>
     );
   }
 
-  // ---------- Member: the sections, straight from Shopify ----------
+  // ---------- Member: exclusive drop (gated) + every past collection ----------
   const name = member.name?.split(" ")[0] || "Member";
+
+  // The current exclusive drop. The gate only ever knows status + teaser; the
+  // name and products come back only after a verified unlock. If this member
+  // already unlocked it (cookie scoped to the drop), reveal it straight away.
+  const dropMeta = await getExclusiveDropMeta();
+  let initialReveal: ExclusiveReveal | null = null;
+  if (dropMeta && dropMeta.status === "live") {
+    const unlocked = cookies().get("fc_drop_unlocked")?.value === dropMeta.handle;
+    if (unlocked) initialReveal = await getExclusiveReveal();
+  }
+
   return (
     <main>
       <section className="px-5 py-10 md:px-8">
@@ -76,6 +94,18 @@ export default async function ArchivesPage() {
           </p>
         </header>
 
+        {/* The current exclusive drop, gated. Shows only when one is flagged. */}
+        {dropMeta && (
+          <div className="mt-12 border-y border-border py-10">
+            <ExclusiveDrop
+              status={dropMeta.status}
+              teaser={dropMeta.teaser}
+              initialReveal={initialReveal}
+            />
+          </div>
+        )}
+
+        {/* Past collections */}
         {sections.length === 0 ? (
           <div className="mt-10 bg-surface p-8">
             <p className="fc-body text-text">
@@ -112,7 +142,7 @@ export default async function ArchivesPage() {
           </div>
         )}
       </section>
-      <Footer />
+      <Footer showJoin={false} />
     </main>
   );
 }
