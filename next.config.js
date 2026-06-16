@@ -10,6 +10,18 @@ const nextConfig = {
       { protocol: "https", hostname: "cdn.shopify.com" },
     ],
   },
+  async redirects() {
+    return [
+      // Send the default Vercel URL to the real domain so nobody lands on
+      // forward-collective.vercel.app. Preserves the path.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "forward-collective.vercel.app" }],
+        destination: "https://forwardcollective.us/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
