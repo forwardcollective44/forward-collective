@@ -1,4 +1,12 @@
+import Link from "next/link";
 import JoinForm from "./JoinForm";
+
+const POLICIES = [
+  { label: "Shipping", href: "/shipping-policy" },
+  { label: "Returns", href: "/return-policy" },
+  { label: "Privacy", href: "/privacy-policy" },
+  { label: "Terms", href: "/terms-of-service" },
+];
 
 /**
  * showJoin controls the opt-in strip. Pages that already have their own join /
@@ -20,10 +28,24 @@ export default function Footer({ showJoin = true }: { showJoin?: boolean }) {
           <JoinForm variant="footer" />
         </div>
       )}
-      {/* Bottom bar */}
-      <div className="flex items-center justify-between border-t border-border px-5 py-5 md:px-8">
+
+      {/* Bottom bar: tagline, small policy links, copyright */}
+      <div className="flex flex-col gap-4 border-t border-border px-5 py-5 md:flex-row md:items-center md:justify-between md:px-8">
         <span className="fc-label text-muted">Keep Moving Forward</span>
-        <span className="fc-label text-muted">FC — 2026</span>
+
+        <nav className="flex flex-wrap gap-x-6 gap-y-2">
+          {POLICIES.map((p) => (
+            <Link
+              key={p.href}
+              href={p.href}
+              className="fc-color fc-label text-muted hover:text-text"
+            >
+              {p.label}
+            </Link>
+          ))}
+        </nav>
+
+        <span className="fc-label text-muted">FC &mdash; 2026</span>
       </div>
     </footer>
   );
