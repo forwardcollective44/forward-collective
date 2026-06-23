@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { addToCart } from "@/lib/cart";
+import { useCart } from "@/components/cart/CartUI";
 import type { PdpVariant } from "@/lib/pdp";
 
 // Common color names -> swatch hex. Anything not listed falls back to the
@@ -50,6 +50,7 @@ export default function ProductPurchase({
   sizes: string[];
   variants: PdpVariant[];
 }) {
+  const { add, busy } = useCart();
   const hasColor = colors.length > 0;
   const hasSize = sizes.length > 0;
 
@@ -84,6 +85,10 @@ export default function ProductPurchase({
   const price = current?.price ?? minPrice;
   const canAdd = !!current && current.available;
 
+  const onAdd = () => {
+    if (current && canAdd) add(current.id);
+  };
+
   const swatchStyle = (c: string): React.CSSProperties => {
     const hex = SWATCH[c.toLowerCase().replace(/\s+/g, "")];
     if (hex) return { backgroundColor: hex };
@@ -96,8 +101,9 @@ export default function ProductPurchase({
 
   const addButton = (extra?: string) => (
     <button
-      type="submit"
-      disabled={!canAdd}
+      type="button"
+      onClick={onAdd}
+      disabled={!canAdd || busy}
       className={cx(
         "fc-color fc-label whitespace-nowrap border border-gold bg-gold px-6 py-4 text-ink hover:bg-gold-light disabled:cursor-not-allowed disabled:border-border disabled:bg-surface disabled:text-muted",
         extra
@@ -108,9 +114,7 @@ export default function ProductPurchase({
   );
 
   return (
-    <form action={addToCart}>
-      <input type="hidden" name="merchandiseId" value={current?.id ?? ""} />
-
+    <div>
       {/* Price */}
       <p className="fc-label mt-4 text-text">${price.toFixed(2)}</p>
 
@@ -119,7 +123,7 @@ export default function ProductPurchase({
         {hasColor && (
           <div>
             <p className="fc-label mb-3 text-muted">
-              Color <span className="text-text">&mdash; {color}</span>
+              Color <span className="text-text">— {color}</span>
             </p>
             <div className="flex flex-wrap gap-3">
               {colors.map((c) => {
@@ -145,11 +149,11 @@ export default function ProductPurchase({
           </div>
         )}
 
-        {/* Size pills (for the chosen color) */}
+        {/* Size pills — flush button group, no grey background */}
         {hasSize && (
           <div>
             <p className="fc-label mb-3 text-muted">Size</p>
-            <div className="flex flex-wrap gap-px bg-border">
+            <div className="flex flex-wrap">
               {sizes.map((s) => {
                 const v = variantFor(color, s);
                 const open = !!v?.available;
@@ -161,11 +165,12 @@ export default function ProductPurchase({
                     disabled={!open}
                     onClick={() => setSize(s)}
                     className={cx(
-                      "fc-color fc-label min-w-[3rem] px-4 py-3 text-center",
+                      "fc-color fc-label relative -ml-px -mt-px min-w-[3.25rem] border border-border px-4 py-3 text-center",
                       selected
-                        ? "bg-text text-bg"
-                        : "bg-surface text-muted hover:text-text",
-                      !open && "cursor-not-allowed bg-surface text-muted/40 line-through"
+                        ? "z-10 border-text bg-text text-bg"
+                        : "bg-bg text-muted hover:text-text",
+                      !open &&
+                        "cursor-not-allowed text-muted/40 line-through hover:text-muted/40"
                     )}
                   >
                     {s}
@@ -192,6 +197,6 @@ export default function ProductPurchase({
           {addButton()}
         </div>
       </div>
-    </form>
+    </div>
   );
 }
