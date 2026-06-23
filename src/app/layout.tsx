@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
+import { CartProvider } from "@/components/cart/CartUI";
+import { fetchCart } from "@/lib/cart";
 import {
   GoogleTagManagerHead,
   GoogleTagManagerNoScript,
@@ -18,7 +20,12 @@ export const metadata: Metadata = {
   description: "For The Collective. Keep Moving Forward.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const cart = await fetchCart();
   return (
     <html lang="en" className={inter.variable}>
       <head>
@@ -26,8 +33,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-bg font-sans text-text antialiased">
         <GoogleTagManagerNoScript />
-        <Nav />
-        {children}
+        <CartProvider initial={cart}>
+          <Nav />
+          {children}
+        </CartProvider>
       </body>
     </html>
   );
