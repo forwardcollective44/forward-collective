@@ -6,7 +6,7 @@ export default function ReturnPolicy() {
       </h1>
 
       <p className="mb-6">
-        At Forward Apparel, all sales are final.
+        At Forward Collective, all sales are final.
       </p>
 
       <p className="mb-6">
