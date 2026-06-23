@@ -3,13 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BagButton } from "@/components/cart/CartUI";
 
-// Each link has its own hover accent color.
+const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
+
+// Each link has its own hover accent color. The bag lives separately as an
+// icon + count button (it opens the slide-in drawer instead of navigating).
 const LINKS = [
   { href: "/", label: "The Staples", hover: "hover:text-[#3B82F6]" },
   { href: "/archives", label: "Forward Archives", hover: "hover:text-[#F76707]" },
   { href: "/collective", label: "The Collective", hover: "hover:text-[#6741D9]" },
-  { href: "/cart", label: "Bag", hover: "hover:text-text" },
 ];
 
 export default function Nav() {
@@ -22,9 +25,7 @@ export default function Nav() {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-bg/95 backdrop-blur">
       <div className="flex items-center justify-between px-5 py-4 md:px-8">
-        {/* Logo — home link. The logo image is used as a mask so it inherits
-            color: normally the ink text color, red on hover. Background of the
-            source image is irrelevant (transparent PNG drives the shape). */}
+        {/* Logo — home link, drawn as a color-able mask. */}
         <Link
           href="/"
           onClick={() => setOpen(false)}
@@ -50,29 +51,33 @@ export default function Nav() {
           <span className="sr-only">Forward Collective</span>
         </Link>
 
-        {/* Desktop links */}
+        {/* Desktop links + bag */}
         <div className="hidden items-center gap-6 md:flex lg:gap-8">
           {LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`fc-color fc-label ${baseColor(link.href)} ${link.hover}`}
+              className={cx("fc-color fc-label", baseColor(link.href), link.hover)}
             >
               {link.label}
             </Link>
           ))}
+          <BagButton />
         </div>
 
-        {/* Mobile menu toggle */}
-        <button
-          type="button"
-          aria-label="Menu"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          className="fc-color fc-label text-text md:hidden"
-        >
-          {open ? "Close" : "Menu"}
-        </button>
+        {/* Mobile: bag icon next to the menu toggle */}
+        <div className="flex items-center gap-5 md:hidden">
+          <BagButton />
+          <button
+            type="button"
+            aria-label="Menu"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            className="fc-color fc-label text-text"
+          >
+            {open ? "Close" : "Menu"}
+          </button>
+        </div>
       </div>
 
       {/* Mobile dropdown */}
@@ -83,9 +88,11 @@ export default function Nav() {
               key={link.href}
               href={link.href}
               onClick={() => setOpen(false)}
-              className={`fc-color fc-label border-t border-border px-5 py-4 ${baseColor(
-                link.href
-              )} ${link.hover}`}
+              className={cx(
+                "fc-color fc-label border-t border-border px-5 py-4",
+                baseColor(link.href),
+                link.hover
+              )}
             >
               {link.label}
             </Link>
