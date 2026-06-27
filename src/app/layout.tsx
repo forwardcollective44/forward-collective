@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import { CartProvider } from "@/components/cart/CartUI";
+import EmailCapturePopup from "@/components/EmailCapturePopup";
 import { fetchCart } from "@/lib/cart";
 import {
   GoogleTagManagerHead,
@@ -36,6 +37,7 @@ export default async function RootLayout({
         <CartProvider initial={cart}>
           <Nav />
           {children}
+          <EmailCapturePopup />
         </CartProvider>
       </body>
     </html>
