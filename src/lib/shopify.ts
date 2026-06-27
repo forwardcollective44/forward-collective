@@ -28,6 +28,11 @@ async function storefront<T>(
   const token = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
   if (!url || !token) return null;
 
+  // Always fetch fresh from Shopify so any edit you make in the admin —
+  // price, photo, title, description, availability — shows on the site on the
+  // very next page load. Every page here is already dynamic, so there is no
+  // static cache to lose. (opts.noStore kept for call-site compatibility.)
+  void opts;
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -35,9 +40,7 @@ async function storefront<T>(
       "X-Shopify-Storefront-Access-Token": token,
     },
     body: JSON.stringify({ query, variables }),
-    ...(opts.noStore
-      ? { cache: "no-store" as const }
-      : { next: { revalidate: 300 } }),
+    cache: "no-store",
   });
   if (!res.ok) return null;
   const json = await res.json();
