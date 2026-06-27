@@ -16,46 +16,52 @@ export default async function ProductPage({
 
   return (
     // pb leaves room so the floating Add to Bag bar never hides the footer.
-    <main className="pb-28">
+    <main className="pb-32">
       <section className="grid md:grid-cols-2">
-        {/* Image */}
-        <div className="relative aspect-[3/4] bg-surface md:aspect-auto md:min-h-[70vh]">
-          {product.image ? (
-            <Image
-              src={product.image}
-              alt={product.title}
-              fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover"
-              priority
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[#ECEAE5]">
-              <span className="fc-label text-muted">FC</span>
-            </div>
-          )}
+        {/* Image — framed by negative space so the garment can breathe. */}
+        <div className="bg-surface p-8 sm:p-12 md:p-16 lg:p-24">
+          <div className="relative mx-auto aspect-[3/4] w-full max-w-[520px]">
+            {product.image ? (
+              <Image
+                src={product.image}
+                alt={product.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <span className="fc-label text-muted">FC</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Details */}
-        <div className="border-l border-border p-6 md:p-12">
-          <h1 className="fc-display text-[clamp(28px,5vw,52px)] text-text">
-            {product.title}
-          </h1>
+        {/* Details — vertically centered with generous padding for an airy,
+            editorial feel. Content is held in a narrow column so nothing
+            stretches edge to edge. */}
+        <div className="flex flex-col justify-center border-t border-border px-6 py-16 md:border-l md:border-t-0 md:px-16 md:py-24 lg:px-24">
+          <div className="mx-auto w-full max-w-md">
+            <h1 className="fc-display text-[clamp(28px,4.5vw,52px)] leading-[1.05] text-text">
+              {product.title}
+            </h1>
 
-          <ProductPurchase
-            name={product.title}
-            minPrice={product.minPrice}
-            colors={product.colors}
-            sizes={product.sizes}
-            variants={product.variants}
-          />
-
-          {product.descriptionHtml && (
-            <div
-              className="fc-body mt-10 max-w-prose space-y-3 text-muted [&_li]:list-disc [&_ul]:ml-5"
-              dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
+            <ProductPurchase
+              name={product.title}
+              minPrice={product.minPrice}
+              colors={product.colors}
+              sizes={product.sizes}
+              variants={product.variants}
             />
-          )}
+
+            {product.descriptionHtml && (
+              <div
+                className="fc-body mt-14 max-w-prose space-y-3 border-t border-border pt-10 text-muted [&_li]:list-disc [&_ul]:ml-5"
+                dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
+              />
+            )}
+          </div>
         </div>
       </section>
       <Footer />
