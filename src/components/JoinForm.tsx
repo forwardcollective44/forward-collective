@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { subscribeLead } from "@/lib/subscribe";
 
 /**
  * SMS-forward join / sign-in.
@@ -33,6 +34,11 @@ export default function JoinForm({
         document.cookie = `fc_phone=${encodeURIComponent(
           phone.trim()
         )}; path=/; max-age=1800; samesite=lax`;
+      }
+      // Capture to Klaviyo + Shopify immediately, so a new lead is saved even
+      // if they never click the magic link. (Skip for existing-member sign-in.)
+      if (mode !== "signin") {
+        subscribeLead({ email, phone }).catch(() => {});
       }
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOtp({
