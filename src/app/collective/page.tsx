@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import JoinForm from "@/components/JoinForm";
 import Footer from "@/components/Footer";
@@ -7,6 +8,12 @@ import { getCurrentMember, getMemberEvents } from "@/lib/session";
 import { SAMPLE_MEMBER, SAMPLE_EVENTS } from "@/lib/sample";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "The Collective — Free Rewards Program",
+  description:
+    "Join The Collective for free and earn 1 point for every $1 spent. Unlock cash rewards, early access, and the Forward Archives as you climb the points ladder.",
+};
 
 const PERKS = [
   { t: "Points on everything", d: "1 point for every $1. They never expire." },
