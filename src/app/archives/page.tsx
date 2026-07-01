@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import JoinForm from "@/components/JoinForm";
@@ -13,6 +14,12 @@ import {
 } from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Forward Archives — Past Drops & Early Access",
+  description:
+    "Browse every past Forward Collective drop and get early access to what's next. The Archives unlock free the moment you join The Collective.",
+};
 
 export default async function ArchivesPage() {
   const member = await getCurrentMember();
