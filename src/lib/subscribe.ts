@@ -9,7 +9,7 @@
 
 import * as klaviyo from "./klaviyo";
 
-const ADMIN_API_VERSION = "2024-10";
+const ADMIN_API_VERSION = "2025-10";
 
 function adminEndpoint(): string | null {
   const domain = process.env.SHOPIFY_STORE_DOMAIN;
@@ -65,7 +65,17 @@ async function upsertShopifyCustomer(p: {
       body: JSON.stringify({ query: CUSTOMER_MUTATION, variables: { input } }),
       cache: "no-store",
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => null);
+    // Surface HTTP-level and top-level GraphQL errors (auth, unsupported
+    // version, throttling) — these appear as json.errors, not userErrors.
+    if (!res.ok || (json && json.errors)) {
+      console.error(
+        "[shopify] admin call failed",
+        res.status,
+        JSON.stringify(json?.errors ?? json)?.slice(0, 500)
+      );
+      return;
+    }
     const errs = json?.data?.customerCreate?.userErrors;
     if (Array.isArray(errs) && errs.length) {
       const onlyTaken = errs.every((e: any) =>
