@@ -14,6 +14,13 @@ export default async function StaplePage() {
 
   return (
     <main>
+      {/* Visually hidden but present in the DOM: gives search engines and
+          screen readers a clear H1 for the homepage without changing the
+          visual design. Delete `sr-only` if you'd rather show it. */}
+      <h1 className="sr-only">
+        Forward Collective — Streetwear Staples & Members-Only Drops
+      </h1>
+
       {groups && groups.length ? (
         groups.map((group) => (
           <section key={group.type} className="border-t border-border">
