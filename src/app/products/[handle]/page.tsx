@@ -1,10 +1,37 @@
 import Image from "next/image";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProductDetail } from "@/lib/pdp";
+import { stripHtml } from "@/lib/seo";
 import ProductPurchase from "@/components/ProductPurchase";
 import Footer from "@/components/Footer";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { handle: string };
+}): Promise<Metadata> {
+  const product = await getProductDetail(params.handle);
+  if (!product) {
+    return { title: "Product Not Found" };
+  }
+
+  const description = stripHtml(product.descriptionHtml);
+
+  return {
+    title: product.title,
+    description,
+    openGraph: {
+      title: product.title,
+      description,
+      images: product.image
+        ? [{ url: product.image, width: 1200, height: 1200, alt: product.title }]
+        : undefined,
+    },
+  };
+}
 
 export default async function ProductPage({
   params,
@@ -14,9 +41,35 @@ export default async function ProductPage({
   const product = await getProductDetail(params.handle);
   if (!product) notFound();
 
+  const inStock = product.variants.some((v) => v.available);
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    description: stripHtml(product.descriptionHtml, 500),
+    image: product.image ? [product.image] : undefined,
+    brand: { "@type": "Brand", name: "Forward Collective" },
+    offers: {
+      "@type": "Offer",
+      url: `https://forwardcollective.us/products/${params.handle}`,
+      priceCurrency: "USD",
+      price: product.minPrice,
+      availability: inStock
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+    },
+  };
+
   return (
     // pb leaves room so the floating Add to Bag bar never hides the footer.
     <main className="pb-32">
+      {/* Product structured data — lets Google show price/availability
+          directly in search results. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <section className="grid md:grid-cols-2">
         {/* Image — framed by negative space so the garment can breathe. */}
         <div className="bg-surface p-8 sm:p-12 md:p-16 lg:p-24">
