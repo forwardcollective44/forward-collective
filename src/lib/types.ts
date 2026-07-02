@@ -9,6 +9,7 @@ export type PointEventType =
   | "anniversary_bonus"
   | "referral_bonus"
   | "welcome_bonus"
+  | "phone_bonus"
   | "redemption";
 
 export interface User {
