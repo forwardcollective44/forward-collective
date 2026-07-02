@@ -167,6 +167,10 @@ export async function joinCollective(input: {
   }
   await admin.from("point_events").insert(events);
 
+  // Add to Klaviyo lists (email + SMS) and fire the welcome flow — matches
+  // ensureMember()'s behavior so every membership path keeps one unified
+  // Klaviyo profile per person.
+  await klaviyo.subscribeMember({ email: input.email, phone });
   await klaviyo.welcome({ email: input.email, phone }, startingPoints);
 
   return { ok: true, message: "You're in the Collective." };
