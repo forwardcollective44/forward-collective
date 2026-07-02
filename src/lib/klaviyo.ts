@@ -21,33 +21,41 @@ async function track(metric: string, profile: { email?: string | null; phone?: s
     console.warn(`[klaviyo] no API key — skipping event "${metric}"`);
     return;
   }
-  await fetch(`${KLAVIYO_API}/events/`, {
-    method: "POST",
-    headers: {
-      Authorization: `Klaviyo-API-Key ${apiKey}`,
-      "Content-Type": "application/json",
-      accept: "application/json",
-      revision: REVISION,
-    },
-    body: JSON.stringify({
-      data: {
-        type: "event",
-        attributes: {
-          metric: { data: { type: "metric", attributes: { name: metric } } },
-          profile: {
-            data: {
-              type: "profile",
-              attributes: {
-                email: profile.email ?? undefined,
-                phone_number: profile.phone ?? undefined,
+  try {
+    const res = await fetch(`${KLAVIYO_API}/events/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Klaviyo-API-Key ${apiKey}`,
+        "Content-Type": "application/json",
+        accept: "application/json",
+        revision: REVISION,
+      },
+      body: JSON.stringify({
+        data: {
+          type: "event",
+          attributes: {
+            metric: { data: { type: "metric", attributes: { name: metric } } },
+            profile: {
+              data: {
+                type: "profile",
+                attributes: {
+                  email: profile.email ?? undefined,
+                  phone_number: profile.phone ?? undefined,
+                },
               },
             },
+            properties,
           },
-          properties,
         },
-      },
-    }),
-  }).catch((e) => console.error("[klaviyo] track failed", e));
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[klaviyo] track "${metric}" failed`, res.status, body.slice(0, 500));
+    }
+  } catch (e) {
+    console.error(`[klaviyo] track "${metric}" failed`, e);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -74,26 +82,34 @@ async function subscribeToList(listId: string, profileAttributes: Record<string,
     console.warn("[klaviyo] no API key — skipping list subscribe");
     return;
   }
-  await fetch(`${KLAVIYO_API}/profile-subscription-bulk-create-jobs/`, {
-    method: "POST",
-    headers: {
-      Authorization: `Klaviyo-API-Key ${apiKey}`,
-      "Content-Type": "application/json",
-      accept: "application/json",
-      revision: REVISION,
-    },
-    body: JSON.stringify({
-      data: {
-        type: "profile-subscription-bulk-create-job",
-        attributes: {
-          profiles: {
-            data: [{ type: "profile", attributes: profileAttributes }],
-          },
-        },
-        relationships: { list: { data: { type: "list", id: listId } } },
+  try {
+    const res = await fetch(`${KLAVIYO_API}/profile-subscription-bulk-create-jobs/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Klaviyo-API-Key ${apiKey}`,
+        "Content-Type": "application/json",
+        accept: "application/json",
+        revision: REVISION,
       },
-    }),
-  }).catch((e) => console.error("[klaviyo] subscribe failed", e));
+      body: JSON.stringify({
+        data: {
+          type: "profile-subscription-bulk-create-job",
+          attributes: {
+            profiles: {
+              data: [{ type: "profile", attributes: profileAttributes }],
+            },
+          },
+          relationships: { list: { data: { type: "list", id: listId } } },
+        },
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[klaviyo] subscribe to list ${listId} failed`, res.status, body.slice(0, 500));
+    }
+  } catch (e) {
+    console.error(`[klaviyo] subscribe to list ${listId} failed`, e);
+  }
 }
 
 // Subscribe a new member: email → Email List, phone → SMS List, each with
