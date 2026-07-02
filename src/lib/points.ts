@@ -17,10 +17,13 @@
 //    that month count. After a 12-month streak, each purchase that extends the
 //    streak into a NEW month earns +100 (it does not stack on the same month).
 // 5. WELCOME_POINTS are credited at signup, not here.
+// 6. PHONE_BONUS_POINTS are credited at signup ONLY when a phone number is
+//    provided, on top of WELCOME_POINTS — also handled in actions.ts, not here.
 
 import type { PointEventType } from "./types";
 
 export const WELCOME_POINTS = 50;
+export const PHONE_BONUS_POINTS = 25;
 export const EARLY_ACCESS_THRESHOLD = 6000;
 
 export interface NewPointEvent {
@@ -101,7 +104,7 @@ export function calcOrderPoints(input: OrderInput): OrderResult {
   if (base > 0) {
     events.push({
       type: "purchase_base",
-      description: `Purchase — $${amount.toFixed(2)}`,
+      description: "Purchase — $" + amount.toFixed(2),
       points: base,
     });
   }
@@ -112,7 +115,7 @@ export function calcOrderPoints(input: OrderInput): OrderResult {
     const extra = Math.round(base * (mult - 1));
     events.push({
       type: "order_size_bonus",
-      description: `Order over $${amount >= 200 ? 200 : 100} — ${mult}x bonus`,
+      description: "Order over $" + (amount >= 200 ? 200 : 100) + " — " + mult + "x bonus",
       points: extra,
     });
   }
@@ -212,6 +215,19 @@ export function welcomeBonus(): NewPointEvent {
     type: "welcome_bonus",
     description: "Welcome to The Collective",
     points: WELCOME_POINTS,
+  };
+}
+
+/**
+ * Phone bonus event, credited at signup ONLY when the member provides a phone
+ * number — on top of the welcome bonus, not instead of it. Incentivizes SMS
+ * opt-in (drop texts) without making phone required.
+ */
+export function phoneBonus(): NewPointEvent {
+  return {
+    type: "phone_bonus",
+    description: "Added phone number",
+    points: PHONE_BONUS_POINTS,
   };
 }
 
