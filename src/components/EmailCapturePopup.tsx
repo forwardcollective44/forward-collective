@@ -119,8 +119,9 @@ export default function EmailCapturePopup() {
               Every drop.
             </h2>
             <p className="fc-body mt-3 text-muted">
-              Join for early access to drops and member rewards. Email is your
-              access; add your number for drop texts.
+              Join for early access to drops and member rewards. Your account
+              lives under your email — phone is optional, for drop texts and
+              a signup bonus.
             </p>
 
             <form onSubmit={submit} className="mt-6 flex flex-col gap-2">
@@ -137,10 +138,13 @@ export default function EmailCapturePopup() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="PHONE — FOR DROP TEXTS"
-                aria-label="Phone"
+                placeholder="PHONE (OPTIONAL) — FOR DROP TEXTS"
+                aria-label="Phone (optional)"
                 className={inputCls}
               />
+              <p className="fc-label text-gold">
+                Add your phone for first alerts by text when new drops go live.
+              </p>
               <button
                 type="submit"
                 disabled={state === "loading"}
