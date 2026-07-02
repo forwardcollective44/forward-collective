@@ -7,7 +7,7 @@
 create table if not exists users (
   id uuid primary key references auth.users,
   email text,
-  phone text,
+  phone text unique,
   name text,
   points_total int default 0,
   collective_member boolean default false,
