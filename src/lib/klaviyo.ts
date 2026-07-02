@@ -18,14 +18,14 @@ function key(): string | null {
 async function track(metric: string, profile: { email?: string | null; phone?: string | null }, properties: Record<string, unknown> = {}) {
   const apiKey = key();
   if (!apiKey) {
-    console.warn(`[klaviyo] no API key — skipping event "${metric}"`);
+    console.warn("[klaviyo] no API key — skipping event \"" + metric + "\"");
     return;
   }
   try {
-    const res = await fetch(`${KLAVIYO_API}/events/`, {
+    const res = await fetch(KLAVIYO_API + "/events/", {
       method: "POST",
       headers: {
-        Authorization: `Klaviyo-API-Key ${apiKey}`,
+        Authorization: "Klaviyo-API-Key " + apiKey,
         "Content-Type": "application/json",
         accept: "application/json",
         revision: REVISION,
@@ -51,10 +51,10 @@ async function track(metric: string, profile: { email?: string | null; phone?: s
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      console.error(`[klaviyo] track "${metric}" failed`, res.status, body.slice(0, 500));
+      console.error("[klaviyo] track \"" + metric + "\" failed", res.status, body.slice(0, 500));
     }
   } catch (e) {
-    console.error(`[klaviyo] track "${metric}" failed`, e);
+    console.error("[klaviyo] track \"" + metric + "\" failed", e);
   }
 }
 
@@ -62,6 +62,12 @@ async function track(metric: string, profile: { email?: string | null; phone?: s
 // List subscription — this is what actually adds a member to your Klaviyo
 // lists (and triggers the welcome flow, which fires on "Added to List").
 // SMS List is double opt-in, so new numbers get a confirmation text.
+//
+// IMPORTANT: every call below carries BOTH identifiers (email + phone) when
+// we know both, even though a given call only subscribes one channel. That
+// is what tells Klaviyo's identity resolution these calls are the same
+// person, so it merges onto a single profile instead of creating two
+// separate profiles (one email-only, one phone-only) that never link up.
 // ---------------------------------------------------------------------------
 
 const LIST_EMAIL = "TnYc45"; // "Email List"
@@ -70,8 +76,8 @@ const LIST_SMS = "RvV4cc"; // "SMS List"
 function formatPhone(raw?: string | null): string | null {
   if (!raw) return null;
   const d = raw.replace(/[^\d]/g, "");
-  if (d.length === 10) return `+1${d}`;
-  if (d.length === 11 && d.startsWith("1")) return `+${d}`;
+  if (d.length === 10) return "+1" + d;
+  if (d.length === 11 && d.startsWith("1")) return "+" + d;
   if (raw.trim().startsWith("+")) return raw.trim();
   return null;
 }
@@ -83,10 +89,10 @@ async function subscribeToList(listId: string, profileAttributes: Record<string,
     return;
   }
   try {
-    const res = await fetch(`${KLAVIYO_API}/profile-subscription-bulk-create-jobs/`, {
+    const res = await fetch(KLAVIYO_API + "/profile-subscription-bulk-create-jobs/", {
       method: "POST",
       headers: {
-        Authorization: `Klaviyo-API-Key ${apiKey}`,
+        Authorization: "Klaviyo-API-Key " + apiKey,
         "Content-Type": "application/json",
         accept: "application/json",
         revision: REVISION,
@@ -105,26 +111,30 @@ async function subscribeToList(listId: string, profileAttributes: Record<string,
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      console.error(`[klaviyo] subscribe to list ${listId} failed`, res.status, body.slice(0, 500));
+      console.error("[klaviyo] subscribe to list " + listId + " failed", res.status, body.slice(0, 500));
     }
   } catch (e) {
-    console.error(`[klaviyo] subscribe to list ${listId} failed`, e);
+    console.error("[klaviyo] subscribe to list " + listId + " failed", e);
   }
 }
 
 // Subscribe a new member: email → Email List, phone → SMS List, each with
-// marketing consent (joining the form is the consent).
+// marketing consent (joining the form is the consent). Both identifiers are
+// included on both calls (when known) so Klaviyo resolves everything to one
+// profile — see the note above subscribeToList.
 export async function subscribeMember(p: { email?: string | null; phone?: string | null }) {
+  const phone = formatPhone(p.phone);
   if (p.email) {
     await subscribeToList(LIST_EMAIL, {
       email: p.email,
+      phone_number: phone ?? undefined,
       subscriptions: { email: { marketing: { consent: "SUBSCRIBED" } } },
     });
   }
-  const phone = formatPhone(p.phone);
   if (phone) {
     await subscribeToList(LIST_SMS, {
       phone_number: phone,
+      email: p.email ?? undefined,
       subscriptions: { sms: { marketing: { consent: "SUBSCRIBED" } } },
     });
   }
