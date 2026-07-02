@@ -9,9 +9,11 @@ import { createServiceClient, createClient } from "./supabase/server";
 import {
   calcOrderPoints,
   welcomeBonus,
+  phoneBonus,
   referralBonus,
   crossesEarlyAccess,
   WELCOME_POINTS,
+  PHONE_BONUS_POINTS,
   type OrderInput,
 } from "./points";
 import { nextMilestone, REWARDS } from "./rewards";
@@ -22,6 +24,19 @@ import {
   getExclusiveReveal,
   type ExclusiveReveal,
 } from "./shopify";
+
+// Normalizes a raw phone number to E.164 (e.g. "+15551234567"), matching the
+// format used everywhere else phone is stored or sent (Klaviyo, Shopify).
+// Returns null for anything that doesn't look like a real number, so a bad
+// value never gets silently stored or used for a sign-in lookup.
+function formatPhone(raw?: string | null): string | null {
+  if (!raw) return null;
+  const d = raw.replace(/[^\d]/g, "");
+  if (d.length === 10) return "+1" + d;
+  if (d.length === 11 && d.startsWith("1")) return "+" + d;
+  if (raw.trim().startsWith("+")) return raw.trim();
+  return null;
+}
 
 /**
  * Unlock the exclusive drop. Runs server-side: the real code and the products
@@ -116,35 +131,52 @@ export async function joinCollective(input: {
     referredBy = ref?.id ?? null;
   }
 
+  // Phone is optional — the account itself always lives under email.
+  const phone = formatPhone(input.phone);
+  const startingPoints = WELCOME_POINTS + (phone ? PHONE_BONUS_POINTS : 0);
+
   const now = new Date().toISOString();
   await admin.from("users").upsert({
     id: authUser.id,
     email: input.email ?? authUser.email,
-    phone: input.phone ?? null,
+    phone,
     collective_member: true,
     member_since: now,
-    points_total: WELCOME_POINTS,
+    points_total: startingPoints,
     referral_code: generateReferralCode(),
     referred_by: referredBy,
   });
 
   const wb = welcomeBonus();
-  await admin.from("point_events").insert({
-    user_id: authUser.id,
-    type: wb.type,
-    description: wb.description,
-    points: wb.points,
-  });
+  const events = [
+    {
+      user_id: authUser.id,
+      type: wb.type,
+      description: wb.description,
+      points: wb.points,
+    },
+  ];
+  if (phone) {
+    const pb = phoneBonus();
+    events.push({
+      user_id: authUser.id,
+      type: pb.type,
+      description: pb.description,
+      points: pb.points,
+    });
+  }
+  await admin.from("point_events").insert(events);
 
-  await klaviyo.welcome({ email: input.email, phone: input.phone }, WELCOME_POINTS);
+  await klaviyo.welcome({ email: input.email, phone }, startingPoints);
 
   return { ok: true, message: "You're in the Collective." };
 }
 
 /**
  * Ensure the signed-in auth user has a Collective member record.
- * Runs on first sign-in (from /auth/callback): creates the row, credits +50
- * welcome points, fires the Klaviyo welcome flow. Idempotent.
+ * Runs on first sign-in (from /auth/callback): creates the row, credits
+ * welcome points (+ a phone bonus if they gave a number), fires the Klaviyo
+ * welcome flow. Idempotent.
  */
 export async function ensureMember(userId: string, email: string | null): Promise<void> {
   const admin = createServiceClient();
@@ -155,7 +187,8 @@ export async function ensureMember(userId: string, email: string | null): Promis
     .maybeSingle();
   if (existing?.collective_member) return;
 
-  const phone = cookies().get("fc_phone")?.value ?? null;
+  const phone = formatPhone(cookies().get("fc_phone")?.value ?? null);
+  const startingPoints = WELCOME_POINTS + (phone ? PHONE_BONUS_POINTS : 0);
   const now = new Date().toISOString();
   await admin.from("users").upsert({
     id: userId,
@@ -163,21 +196,61 @@ export async function ensureMember(userId: string, email: string | null): Promis
     phone,
     collective_member: true,
     member_since: now,
-    points_total: WELCOME_POINTS,
+    points_total: startingPoints,
     referral_code: generateReferralCode(),
   });
 
   const wb = welcomeBonus();
-  await admin.from("point_events").insert({
-    user_id: userId,
-    type: wb.type,
-    description: wb.description,
-    points: wb.points,
-  });
+  const events = [
+    {
+      user_id: userId,
+      type: wb.type,
+      description: wb.description,
+      points: wb.points,
+    },
+  ];
+  if (phone) {
+    const pb = phoneBonus();
+    events.push({
+      user_id: userId,
+      type: pb.type,
+      description: pb.description,
+      points: pb.points,
+    });
+  }
+  await admin.from("point_events").insert(events);
 
   // Add to Klaviyo lists (email + SMS) and fire the welcome flow.
   await klaviyo.subscribeMember({ email, phone });
-  await klaviyo.welcome({ email, phone }, WELCOME_POINTS);
+  await klaviyo.welcome({ email, phone }, startingPoints);
+}
+
+/**
+ * Resolve a sign-in identifier (typed into the single "email or phone" field
+ * on /signin) to the account's email — the only channel the magic link ever
+ * goes out on. The account's identity is always the email address; phone is
+ * just an alternate lookup key so a returning member doesn't need to remember
+ * which one they used.
+ *
+ * Returns null if the identifier is a phone number with no matching member —
+ * never falls back to sending anything to a raw phone number.
+ */
+export async function resolveSignInEmail(identifier: string): Promise<string | null> {
+  const value = identifier.trim();
+  if (!value) return null;
+  if (value.includes("@")) return value;
+
+  const phone = formatPhone(value);
+  if (!phone) return null;
+
+  const admin = createServiceClient();
+  const { data } = await admin
+    .from("users")
+    .select("email")
+    .eq("phone", phone)
+    .maybeSingle();
+
+  return data?.email ?? null;
 }
 
 /**
@@ -318,7 +391,7 @@ export async function redeemReward(input: {
   await admin.from("point_events").insert({
     user_id: input.userId,
     type: "redemption",
-    description: `Redeemed: ${input.rewardDescription}`,
+    description: "Redeemed: " + input.rewardDescription,
     points: -input.rewardPoints,
   });
 
@@ -338,7 +411,7 @@ export async function redeemReward(input: {
     ok: true,
     message:
       input.kind === "cash"
-        ? `Redeemed. Code: ${input.discountCode ?? "(generate upstream)"}`
+        ? "Redeemed. Code: " + (input.discountCode ?? "(generate upstream)")
         : "Redeemed. Select your free item at checkout.",
   };
 }
